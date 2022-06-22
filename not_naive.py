@@ -29,13 +29,15 @@ model.summary()
 # EXTRACTION PHASE
 data = tdfs.load("malaria", split='train', as_supervised=True)
 
+# Reading the saved files with the raw data
 file_pattern = f'~/tensorflow_datasets/malaria/1.0.0/malaria-train.tfrecord*'
 file = tf.data.Dataset.list_files(file_pattern)
 
+# Using the interleave function to concurrently load the files
 train_dataset = file.interleave(
     tf.data.TFRecordDataset,
-    cycle_length=4,
-    num_parallel_calls=tf.data.experimental.AUTOTUNE
+    cycle_length=4, # Number of files to read in parallel
+    num_parallel_calls=tf.data.experimental.AUTOTUNE # Number of CPU threads to use for parallel processing
 )
 # EXTRACTION PHASE END
 
@@ -57,12 +59,17 @@ def augmentationV2(serialized_data):
     return image, example['label']
 
 import multiprocessing
+# Number of CPU cores available
 cores = multiprocessing.cpu_count()
 
+# Using the map function to apply the augmentation function to the dataset in parallel on the CPU cores
 train_dataset = train_dataset.map(augmentationV2, num_parallel_calls=cores)
+
+# Cache the dataset to memory to avoid reading from disk every epoch
 train_dataset = train_dataset.cache()
 
 train_dataset = train_dataset.shuffle(100).batch(32)
+# Prefetching the data to improve the speed of the training
 train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 # TRANSROFMATION PHASE END
 
